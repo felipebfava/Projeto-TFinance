@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>TFinance - Banco Pessoal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://kit.fontawesome.com/a2e0daefb0.js" crossorigin="anonymous"></script>
+  <style>
+    body { background-color: #f8f9fa; }
+    .container { max-width: 800px; }
+    .hidden { display: none; }
+    footer {
+      background-color: #343a40;
+      color: white;
+      padding: 2rem 1rem;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="#" id="nav-home">TFinance</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto" id="navbar-links">
+          <li class="nav-item">
+            <a class="nav-link active" href="#" id="nav-home-link">Home</a>
+          </li>
+          <li class="nav-item" id="nav-cadastro-item" style="display:none;">
+            <a class="nav-link" href="#" id="nav-cadastro-link">Cadastrar Lançamento</a>
+          </li>
+          <li class="nav-item" id="nav-login-item">
+            <a class="nav-link" href="#" id="nav-login-link">Login</a>
+          </li>
+          <li class="nav-item" id="nav-logout-item" style="display:none;">
+            <a class="nav-link" href="#" id="nav-logout-link">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+
+    <!-- Home -->
+    <section id="home-section">
+      <h1 class="mb-4 text-center">Bem-vindo ao TFinance</h1>
+
+      <div class="mb-5">
+        <h3>Sobre Nós</h3>
+        <p>
+          O TFinance nasceu da necessidade de um controle financeiro pessoal simples, intuitivo e acessível a todos.
+          Nosso projeto busca ajudar usuários a gerenciarem receitas e despesas com facilidade, sem complicações.
+        </p>
+      </div>
+
+      <div class="mb-5">
+        <h3>Serviços Oferecidos</h3>
+        <ul>
+          <li>Cadastro e controle de receitas e despesas</li>
+          <li>Classificação por categorias (Alimentação, Investimentos, etc.)</li>
+          <li>Visualização rápida do histórico financeiro</li>
+          <li>Futuro suporte para agendamento de pagamentos</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Login -->
+    <section id="login-section" class="hidden">
+      <h2 class="mb-4 text-center">Login</h2>
+
+      <form id="form-login" class="card p-4 shadow-sm" onsubmit="return false;">
+        <div class="mb-3">
+          <label for="nome" class="form-label">Nome</label>
+          <input type="text" id="nome" class="form-control" required />
+        </div>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">E-mail</label>
+          <input type="email" id="email" class="form-control" required />
+        </div>
+
+        <div class="mb-3">
+          <label for="senha" class="form-label">Senha</label>
+          <input type="password" id="senha" class="form-control" required />
+        </div>
+
+        <div class="d-grid">
+          <button id="btn-login" class="btn btn-primary">Entrar</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Cadastro de Lançamentos -->
+    <section id="cadastro-section" class="hidden">
+      <h2 class="text-center mb-4">Cadastro de Receita / Despesa</h2>
+
+      <form id="form-lancamento" class="card p-4 shadow-sm" onsubmit="return false;">
+        <div class="mb-3">
+          <label for="tipo" class="form-label">Tipo de Lançamento</label>
+          <select class="form-select" id="tipo" required>
+            <option value="">Selecione</option>
+            <option value="receita">Receita</option>
+            <option value="despesa">Despesa</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="categoria" class="form-label">Categoria</label>
+          <select class="form-select" id="categoria" required>
+            <option value="">Selecione uma categoria</option>
+            <option value="alimentacao">🍽 Alimentação</option>
+            <option value="despesas_pessoais">🧍 Despesas Pessoais</option>
+            <option value="fatura">💳 Fatura</option>
+            <option value="investimentos">📈 Investimentos</option>
+            <option value="outros">📦 Outros</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="valor" class="form-label">Valor</label>
+          <input type="number" step="0.01" class="form-control" id="valor" required />
+        </div>
+
+        <div class="mb-3">
+          <label for="data" class="form-label">Data</label>
+          <input type="date" class="form-control" id="data" required />
+        </div>
+
+        <div class="d-grid">
+          <button id="btn-salvar-lancamento" class="btn btn-primary">Salvar Lançamento</button>
+        </div>
+      </form>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <h5>TFinance</h5>
+          <p>Controle financeiro simples e eficiente.</p>
+        </div>
+        <div class="col-md-6">
+          <h5>Dúvidas? Envie seu contato</h5>
+          <form id="form-duvidas" onsubmit="return false;">
+            <div class="mb-2">
+              <input type="email" id="email-duvidas" class="form-control" placeholder="Seu e-mail" required />
+            </div>
+            <div class="mb-2">
+              <textarea id="descricao-duvidas" class="form-control" rows="3" placeholder="Descreva sua dúvida" required></textarea>
+            </div>
+            <button id="btn-enviar-duvidas" class="btn btn-light">Enviar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Controle simples de "login"
+    let logado = false;
+
+    const mostrarSecao = (secaoId) => {
+      ['home-section', 'login-section', 'cadastro-section'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(secaoId).classList.remove('hidden');
+
+      // Atualiza active da navbar
+      ['nav-home-link', 'nav-login-link', 'nav-cadastro-link'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+      });
+
+      if (secaoId === 'home-section') document.getElementById('nav-home-link').classList.add('active');
+      if (secaoId === 'login-section') document.getElementById('nav-login-link').classList.add('active');
+      if (secaoId === 'cadastro-section') document.getElementById('nav-cadastro-link').classList.add('active');
+    };
+
+    const atualizarNavbar = () => {
+      document.getElementById('nav-cadastro-item').style.display = logado ? 'block' : 'none';
+      document.getElementById('nav-login-item').style.display = logado ? 'none' : 'block';
+      document.getElementById('nav-logout-item').style.display = logado ? 'block' : 'none';
+    };
+
+    // Eventos navbar
+    document.getElementById('nav-home-link').addEventListener('click', e => {
+      e.preventDefault();
+      mostrarSecao('home-section');
+    });
+
+    document.getElementById('nav-login-link').addEventListener('click', e => {
+      e.preventDefault();
+      mostrarSecao('login-section');
+    });
+
+    document.getElementById('nav-cadastro-link').addEventListener('click', e => {
+      e.preventDefault();
+      if (logado) {
+        mostrarSecao('cadastro-section');
+        // Preenche data atual se vazio
+        const dataInput = document.getElementById('data');
+        if (!dataInput.value) {
+          const hoje = new Date().toISOString().slice(0, 10);
+          dataInput.value = hoje;
+        }
+      } else {
+        alert('Você precisa estar logado para acessar esta página.');
+        mostrarSecao('login-section');
+      }
+    });
+
+    document.getElementById('nav-logout-link').addEventListener('click', e => {
+      e.preventDefault();
+      logado = false;
+      alert('Logout realizado com sucesso.');
+      atualizarNavbar();
+      mostrarSecao('home-section');
+    });
+
+    // Login (simulado)
+    document.getElementById('btn-login').addEventListener('click', () => {
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value.trim();
+
+      if (!nome || !email || !senha) {
+        alert('Por favor, preencha todos os campos.');
+        return;
+      }
+
+      // Aqui você integraria com backend e JWT real
+      logado = true;
+      alert(`Bem-vindo, ${nome}! Você está logado.`);
+      atualizarNavbar();
+      mostrarSecao('home-section');
+
+      // Limpa form login
+      document.getElementById('form-login').reset();
+    });
+
+    // Enviar dúvidas (simples)
+    document.getElementById('btn-enviar-duvidas').addEventListener('click', () => {
+      const email = document.getElementById('email-duvidas').value.trim();
+      const descricao = document.getElementById('descricao-duvidas').value.trim();
+
+      if (!email || !descricao) {
+        alert('Por favor, preencha todos os campos para enviar sua dúvida.');
+        return;
+      }
+
+      alert('Sua dúvida foi enviada com sucesso! Entraremos em contato.');
+      document.getElementById('form-duvidas').reset();
+    });
+
+    // Inicializa navbar e página
+    atualizarNavbar();
+    mostrarSecao('home-section');
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
