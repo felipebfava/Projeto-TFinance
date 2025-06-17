@@ -2,10 +2,26 @@
 
 
 #Tema/Título
+TFinance - Seu Controle Financeiro Simples e Eficiente
 
 #Resumo
 
-#Alunos
+#Aluno
+Felipe Biava Favarin
+
+#Objetivo (Sobre)
+A TFinance é um projeto destinado à formação nas disciplinas da graduação em ciência da computação pelo Instituto Federal Catarinense - Campus Videira.
+
+O projeto compõe a nota de três disciplinas, sendo elas:
+
+- Engenharia de Software;
+- Projeto Aplicado;
+- Desenvolvimento Web II.
+
+O tema central é uma aplicação web completa de um site para o controle financeiro pessoal.
+
+Nosso objetivo é trazer comodidade ao usuário, para que ele possa usufruir de nossos serviços oferecidos
+
 
 #Como executar o projeto
 
