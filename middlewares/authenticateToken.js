@@ -5,7 +5,7 @@ function authenticateToken(req, res, next) {
   // O token deverá ser enviado no cabeçalho Authorization no formato "Bearer <token>"
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
+  
   if (!token) {
     return res.status(401).json({ error: 'Token não fornecido.' });
   }

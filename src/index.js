@@ -135,6 +135,8 @@ app.post('/v1/login', async (req, res) => {
 // Tela de lançamentos - GET: Exibe os lançamentos do usuário
 // authenticateToken,
 app.get('/v1/lancamentos', authenticateToken, (req, res) => {
+  console.log("Get Lançamentos");
+  
   res.render('lancamentos', { user: req.user });
 });
 
@@ -193,7 +195,7 @@ app.post('/v1/lancamentos', authenticateToken, (req, res) => {
 
 //authenticateToken,
 // Tela Menu - GET: renderiza o menu.ejs
-app.get('/v1/menu', authenticateToken, (req, res) => {
+app.get('/v1/menu', (req, res) => {
   res.render('menu');
 });
 
