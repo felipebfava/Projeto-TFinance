@@ -1,4 +1,3 @@
-// index.js
 const express = require('express');
 const bodyParser = require('body-parser'); // Para parse de formulários e JSON
 
@@ -7,11 +6,15 @@ const jwt = require('jsonwebtoken');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const authenticateToken = require('../middlewares/authenticateToken.js');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+// Middleware para permitir o uso de cookies
+app.use(cookieParser());
 
 app.use(express.static(path.join(__dirname, '..')));
 
@@ -44,7 +47,7 @@ app.set('view engine', 'ejs');
 
 // Tela principal - GET exibe a tela Home
 app.get('/v1/home', (req, res) => {
-  res.render('home', { user: null }); 
+  res.render('home', { user: null });
 });
 
 // Tela de cadastro - GET
@@ -55,7 +58,7 @@ app.get('/v1/cadastro', (req, res) => {
 // Cadastro - POST
 app.post('/v1/cadastro', async (req, res) => {
   const { nome, email, senha, confirmSenha } = req.body;
-  
+
   // Validações básicas
   if (!nome || !email || !senha || !confirmSenha) {
     return res.render('cadastro', { error: 'Todos os campos são obrigatórios.' });
@@ -67,7 +70,7 @@ app.post('/v1/cadastro', async (req, res) => {
     //mudar para um tamanho mínimo aceitável
     return res.render('cadastro', { error: 'A senha deve ter no mínimo 3 caracteres.' });
   }
-  
+
   try {
     // Criptografa a senha
     const hashedPassword = await bcrypt.hash(senha, 10);
@@ -85,22 +88,22 @@ app.post('/v1/cadastro', async (req, res) => {
   } catch (error) {
     console.error("Erro ao criptografar a senha:", error);
     res.render('cadastro', { error: 'Erro interno. Tente novamente.' });
-  } 
+  }
 });
-  
+
 // Tela de login - GET: exibe a tela de login
 app.get('/v1/login', (req, res) => {
   res.render('login', { error: null });
 });
- 
+
 // Login - POST: processa os dados de login
 app.post('/v1/login', async (req, res) => {
   const { email, senha } = req.body;
-  
+
   if (!email || !senha) {
     return res.status(400).json({ error: "Todos os campos são obrigatórios." });
   }
-  
+
   const sql = `SELECT * FROM user WHERE email = ? LIMIT 1`;
   db.get(sql, [email], async (err, user) => {
     if (err) {
@@ -116,12 +119,20 @@ app.post('/v1/login', async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: "Credenciais inválidas." });
     }
-    
+
     // Gera um token JWT para autenticação; o token é enviado para o cliente salvo no localStorage (expira em 1h); 
     const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '1h' });
-    
+
     //Gera o refresh token que expira em 7dias
     const refreshToken = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Envia o token como cookie HTTP-Only para evitar acesso via JavaScript
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // só em produção usar https
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60, // 1 hora
+    });
 
     // retorna o token em formato JSON; o armazenamento local é feito no frontend
     res.json({ token, refreshToken, message: "Login realizado com sucesso." });
@@ -136,46 +147,61 @@ app.post('/v1/login', async (req, res) => {
 // authenticateToken,
 app.get('/v1/lancamentos', authenticateToken, (req, res) => {
   console.log("Get Lançamentos");
-  
+
   res.render('lancamentos', { user: req.user });
 });
 
 //authenticateToken,
 app.post('/v1/lancamentos', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const { valor, data, categoria, comentario } = req.body;
+  const { valor, data, tipo, categoria, comentario } = req.body;
 
-  if (!valor || !data || !categoria) {
-    return res.status(400).json({ error: 'Os campos valor, data e categoria são obrigatórios.' });
+  console.log('Dados recebidos:', { valor, data, tipo, categoria, comentario });
+
+  //campos obrigatórios
+  if (!valor || !data || !tipo) {
+    return res.status(400).json({ error: 'Os campos valor, data e tipo são obrigatórios.' });
   }
 
-  // Mapeia o valor enviado para os valores permitidos no banco de dados.
-  let categoriaLancamento = '';
-  let tipo_lancamento = 1; // assumindo que lançamentos aqui são despesas (1)
-  switch (categoria) {
+  // Validação do valor
+  const valorNumerico = parseFloat(valor);
+  if (isNaN(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'Valor deve ser um número maior que zero.' });
+  }
+
+  // Validação do tipo (deve ser exatamente "Receita" ou "Despesa")
+  if (tipo !== 'Receita' && tipo !== 'Despesa') {
+    return res.status(400).json({ error: 'Tipo deve ser "Receita" ou "Despesa".' });
+  }
+
+  // Mapeia o tipo para o formato do banco de dados
+  const tipo_lancamento = tipo === 'Receita' ? 0 : 1; // 0 = Receita, 1 = Despesa
+
+
+  // Mapeia o valor do frontend para os valores permitidos no banco de dados.
+  let categoriaLancamento = 'Outros';
+  if(categoria) {
+    switch (categoria) {
     case 'Alimentacao':
       categoriaLancamento = 'Alimentação';
-      tipo_lancamento = 1;
       break;
     case 'Investimento':
       categoriaLancamento = 'Investimentos';
-      tipo_lancamento = 1;
       break;
     case 'Fatura':
       categoriaLancamento = 'Fatura';
-      tipo_lancamento = 1;
       break;
-    case 'Despesa':
+    case 'DespesaCategoria':
       categoriaLancamento = 'Despesas Pessoais';
-      tipo_lancamento = 1;
       break;
     case 'Outros':
       categoriaLancamento = 'Outros';
-      tipo_lancamento = 1;
       break;
     default:
       categoriaLancamento = categoria;
+    }
   }
+  
 
   // Query para inserir o lançamento
   const sql = `
@@ -183,13 +209,16 @@ app.post('/v1/lancamentos', authenticateToken, (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `;
   const params = [userId, valor, data, comentario || null, categoriaLancamento, tipo_lancamento];
-  
-  db.run(sql, params, function(err) {
+  console.log('Inserindo no banco:', params);
+
+  db.run(sql, params, function (err) {
     if (err) {
-      console.error(err);
+      console.error('Erro ao inserir lançamento:', err);
       return res.status(500).json({ error: 'Erro ao inserir lançamento no banco de dados.' });
     }
-    res.json({ message: 'Lançamento inserido com sucesso.' });
+
+    console.log('Lançamento inserido com ID:', this.lastID);
+    res.json({ message: 'Lançamento inserido com sucesso.', id: this.lastID });
   });
 });
 
@@ -203,21 +232,43 @@ app.get('/v1/menu', (req, res) => {
 // menu-data - GET: carrega os dados de saldo, lançamento e gráficos
 app.get('/v1/menu-data', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const sql = `SELECT * FROM lancamento WHERE user_id = ? ORDER BY data DESC`;
+  const sql = `SELECT id, valor, data, descricao as comentario,
+  categoria_lancamento as categoria, tipo_lancamento,
+  CASE
+    WHEN tipo_lancamento = 0 THEN 'Receita'
+    WHEN tipo_lancamento = 1 THEN 'Despesa' ELSE 'Indefinido'
+  END as tipo
+  FROM lancamento WHERE user_id = ? ORDER BY data DESC, id DESC`;
 
   db.all(sql, [userId], (err, lancamentos) => {
-    if (err) return res.status(500).json({ error: 'Erro no banco de dados' });
+    if (err) {
+      console.error('Erro ao buscar lançamentos:', err);
+      return res.status(500).json({ error: 'Erro no banco de dados' });
+    }
+
+    console.log('Lançamentos encontrados:', lancamentos.length);
+    console.log('Primeiro lançamento:', lancamentos[0]);
 
     // Em sequência, coleta os dados dos gráficos
     getPizzaChartData(userId, (err, pizzaData) => {
-      if (err) return res.status(500).json({ error: 'Erro no gráfico de pizza' });
+      if (err) {
+        console.error('Erro no gráfico de pizza:', err);
+        return res.status(500).json({ error: 'Erro no gráfico de pizza' });
+      }
 
       getCartesianChartData(userId, (err, cartesianData) => {
-        if (err) return res.status(500).json({ error: 'Erro no gráfico cartesiano' });
+        if (err) {
+          console.error('Erro no gráfico cartesiano:', err);
+          return res.status(500).json({ error: 'Erro no gráfico cartesiano' });
+        }
 
         getNumericChartData(userId, (err, numericData) => {
-          if (err) return res.status(500).json({ error: 'Erro no gráfico numérico' });
-
+          if (err) {
+            console.error('Erro no gráfico numérico:', err);
+            return res.status(500).json({ error: 'Erro no gráfico numérico' });
+          }
+          console.log('Dados numéricos:', numericData);
+          
           res.json({
             user: req.user,
             lancamentos,
@@ -234,9 +285,14 @@ app.get('/v1/menu-data', authenticateToken, (req, res) => {
 
 // Logout - Simplesmente retorna mensagem (a remoção do token fica no frontend)
 app.post('/v1/logout', (req, res) => {
+  // Limpa o cookie do token
+  res.clearCookie('token', {
+    path: '/',
+  });
+
   res.json({ message: 'Logout realizado com sucesso.' });
 });
-  
+
 // Refresh - Recebe refreshToken no corpo da requisição e, se válido, gera novo token de acesso
 app.post('/v1/refresh', (req, res) => {
   const { refreshToken } = req.body;
@@ -245,14 +301,14 @@ app.post('/v1/refresh', (req, res) => {
 
   jwt.verify(refreshToken, JWT_SECRET, (err, user) => {
     if (err) return res.status(403).json({ error: 'Refresh token inválido.' });
-    
+
     // Gera novo access token - expira em 1h
     const newToken = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '1h' });
-    
+
     res.json({ token: newToken, message: 'Token atualizado com sucesso.' });
   });
 });
-  
+
 // Inicia o servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
