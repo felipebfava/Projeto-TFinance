@@ -3,7 +3,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'SUA_CHAVE_SECRETA';
 
 function authenticateToken(req, res, next) {
   // O token deverá ser enviado no cabeçalho Authorization no formato "Bearer <token>"
-  // const authHeader = req.headers['authorization'];
+  const authHeader = req.headers['authorization'];
   // const token = authHeader && authHeader.split(' ')[1];
 
   const token = req.cookies.token; // pega token do cookie

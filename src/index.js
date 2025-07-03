@@ -31,20 +31,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'SUA_CHAVE_SECRETA';
 app.set('views', path.join('./views'));
 app.set('view engine', 'ejs');
 
-/* --------------------
-   LOGIN USUÁRIO
-
-   felipe
-   felipe@gmail.com
-   Admin123
------------------------ */
-
-
-
-/* --------------------
-   ROTAS DE AUTENTICAÇÃO
------------------------ */
-
 // Tela principal - GET exibe a tela Home
 app.get('/v1/home', (req, res) => {
   res.render('home', { user: null });
@@ -267,7 +253,7 @@ app.get('/v1/menu-data', authenticateToken, (req, res) => {
             console.error('Erro no gráfico numérico:', err);
             return res.status(500).json({ error: 'Erro no gráfico numérico' });
           }
-          console.log('Dados numéricos:', numericData);
+          //console.log('Dados numéricos:', numericData);
           
           res.json({
             user: req.user,
