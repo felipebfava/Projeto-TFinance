@@ -227,7 +227,7 @@
 
       // Função de logout
       window.logout = async function() {
-        if (confirm('Tem certeza que deseja sair?')) {
+        // if (confirm('Tem certeza que deseja sair?')) {
           try {
             await fetch('/v1/logout', {
               method: 'POST',
@@ -241,10 +241,10 @@
           }
 
           localStorage.removeItem('authToken');
-          alert('Logout realizado com sucesso!');
+          // alert('Logout realizado com sucesso!');
           window.location.href = '/v1/login';
         }
-      };
+      // };
 
       window.addEventListener("load", async () => {
         const token = localStorage.getItem("authToken");
