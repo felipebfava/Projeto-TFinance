@@ -1,4 +1,3 @@
-// index.js
 const express = require('express');
 const bodyParser = require('body-parser'); // Para parse de formulários e JSON
 
@@ -155,39 +154,54 @@ app.get('/v1/lancamentos', authenticateToken, (req, res) => {
 //authenticateToken,
 app.post('/v1/lancamentos', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const { valor, data, categoria, comentario } = req.body;
+  const { valor, data, tipo, categoria, comentario } = req.body;
 
-  if (!valor || !data || !categoria) {
-    return res.status(400).json({ error: 'Os campos valor, data e categoria são obrigatórios.' });
+  console.log('Dados recebidos:', { valor, data, tipo, categoria, comentario });
+
+  //campos obrigatórios
+  if (!valor || !data || !tipo) {
+    return res.status(400).json({ error: 'Os campos valor, data e tipo são obrigatórios.' });
   }
 
-  // Mapeia o valor enviado para os valores permitidos no banco de dados.
-  let categoriaLancamento = '';
-  let tipo_lancamento = 1; // assumindo que lançamentos aqui são despesas (1)
-  switch (categoria) {
+  // Validação do valor
+  const valorNumerico = parseFloat(valor);
+  if (isNaN(valorNumerico) || valorNumerico <= 0) {
+    return res.status(400).json({ error: 'Valor deve ser um número maior que zero.' });
+  }
+
+  // Validação do tipo (deve ser exatamente "Receita" ou "Despesa")
+  if (tipo !== 'Receita' && tipo !== 'Despesa') {
+    return res.status(400).json({ error: 'Tipo deve ser "Receita" ou "Despesa".' });
+  }
+
+  // Mapeia o tipo para o formato do banco de dados
+  const tipo_lancamento = tipo === 'Receita' ? 0 : 1; // 0 = Receita, 1 = Despesa
+
+
+  // Mapeia o valor do frontend para os valores permitidos no banco de dados.
+  let categoriaLancamento = 'Outros';
+  if(categoria) {
+    switch (categoria) {
     case 'Alimentacao':
       categoriaLancamento = 'Alimentação';
-      tipo_lancamento = 1;
       break;
     case 'Investimento':
       categoriaLancamento = 'Investimentos';
-      tipo_lancamento = 1;
       break;
     case 'Fatura':
       categoriaLancamento = 'Fatura';
-      tipo_lancamento = 1;
       break;
-    case 'Despesa':
+    case 'DespesaCategoria':
       categoriaLancamento = 'Despesas Pessoais';
-      tipo_lancamento = 1;
       break;
     case 'Outros':
       categoriaLancamento = 'Outros';
-      tipo_lancamento = 1;
       break;
     default:
       categoriaLancamento = categoria;
+    }
   }
+  
 
   // Query para inserir o lançamento
   const sql = `
@@ -195,13 +209,16 @@ app.post('/v1/lancamentos', authenticateToken, (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `;
   const params = [userId, valor, data, comentario || null, categoriaLancamento, tipo_lancamento];
+  console.log('Inserindo no banco:', params);
 
   db.run(sql, params, function (err) {
     if (err) {
-      console.error(err);
+      console.error('Erro ao inserir lançamento:', err);
       return res.status(500).json({ error: 'Erro ao inserir lançamento no banco de dados.' });
     }
-    res.json({ message: 'Lançamento inserido com sucesso.' });
+
+    console.log('Lançamento inserido com ID:', this.lastID);
+    res.json({ message: 'Lançamento inserido com sucesso.', id: this.lastID });
   });
 });
 
@@ -215,21 +232,43 @@ app.get('/v1/menu', (req, res) => {
 // menu-data - GET: carrega os dados de saldo, lançamento e gráficos
 app.get('/v1/menu-data', authenticateToken, (req, res) => {
   const userId = req.user.id;
-  const sql = `SELECT * FROM lancamento WHERE user_id = ? ORDER BY data DESC`;
+  const sql = `SELECT id, valor, data, descricao as comentario,
+  categoria_lancamento as categoria, tipo_lancamento,
+  CASE
+    WHEN tipo_lancamento = 0 THEN 'Receita'
+    WHEN tipo_lancamento = 1 THEN 'Despesa' ELSE 'Indefinido'
+  END as tipo
+  FROM lancamento WHERE user_id = ? ORDER BY data DESC, id DESC`;
 
   db.all(sql, [userId], (err, lancamentos) => {
-    if (err) return res.status(500).json({ error: 'Erro no banco de dados' });
+    if (err) {
+      console.error('Erro ao buscar lançamentos:', err);
+      return res.status(500).json({ error: 'Erro no banco de dados' });
+    }
+
+    console.log('Lançamentos encontrados:', lancamentos.length);
+    console.log('Primeiro lançamento:', lancamentos[0]);
 
     // Em sequência, coleta os dados dos gráficos
     getPizzaChartData(userId, (err, pizzaData) => {
-      if (err) return res.status(500).json({ error: 'Erro no gráfico de pizza' });
+      if (err) {
+        console.error('Erro no gráfico de pizza:', err);
+        return res.status(500).json({ error: 'Erro no gráfico de pizza' });
+      }
 
       getCartesianChartData(userId, (err, cartesianData) => {
-        if (err) return res.status(500).json({ error: 'Erro no gráfico cartesiano' });
+        if (err) {
+          console.error('Erro no gráfico cartesiano:', err);
+          return res.status(500).json({ error: 'Erro no gráfico cartesiano' });
+        }
 
         getNumericChartData(userId, (err, numericData) => {
-          if (err) return res.status(500).json({ error: 'Erro no gráfico numérico' });
-
+          if (err) {
+            console.error('Erro no gráfico numérico:', err);
+            return res.status(500).json({ error: 'Erro no gráfico numérico' });
+          }
+          console.log('Dados numéricos:', numericData);
+          
           res.json({
             user: req.user,
             lancamentos,

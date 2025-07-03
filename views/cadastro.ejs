@@ -59,17 +59,19 @@
         <label for="email" class="form-label">Seu email</label>
         <input type="email" name="email" id="email" class="form-control" required>
       </div>
+      <!--pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)[A-Za-z\\d]{3,60}$"-->
       <div class="mb-3">
         <label for="senha" class="form-label">Sua senha</label>
         <input type="password" name="senha" id="senha" class="form-control"
-               pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)[A-Za-z\\d]{3,60}$"
+               
                title="A senha deve ter entre 3 e 60 caracteres, com ao menos uma letra maiúscula, uma minúscula e um número."
                required>
       </div>
+
       <div class="mb-3">
         <label for="confirmSenha" class="form-label">Repetir senha</label>
         <input type="password" name="confirmSenha" id="confirmSenha" class="form-control"
-               pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)[A-Za-z\\d]{3,60}$"
+              
                required>
       </div>
       <button type="submit" class="btn btn-custom w-100">Cadastrar</button>

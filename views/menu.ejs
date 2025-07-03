@@ -14,17 +14,18 @@
         font-family: Arial, sans-serif;
       }
       .container-menu {
-        max-width: 950px;
+        max-width: 1200px;
         background-color: white;
-        margin: 30px auto;
-        padding: 25px;
+        margin: 80px auto;
+        padding: 40px 50px;
         border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       }
       .top-bar,
       .saldo-box,
       .lancamentos-box,
       .graficos-box {
-        margin-bottom: 20px;
+        margin-bottom: 30px;
       }
       .user-circle {
         width: 45px;
@@ -36,18 +37,83 @@
         justify-content: center;
         align-items: center;
         font-weight: bold;
-        margin-right: 10px;
+        margin-right: 15px;
+        font-size: 1.2rem;
       }
       .grafico-barra {
         height: 20px;
         background-color: #198754;
         border-radius: 4px;
+        transition: width 0.3s ease;
       }
       .graficos-box .box {
-        background-color: #f0f0f0;
+        background-color: #f8f9fa;
         border-radius: 8px;
-        padding: 15px;
+        padding: 25px;
         text-align: center;
+        font-size: 1.1rem;
+        border: 1px solid #e9ecef;
+        height: 100%;
+      }
+      .lancamento-item {
+        border-left: 4px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #fafafa;
+        border-radius: 0 8px 8px 0;
+        transition: transform 0.2s ease;
+      }
+      .lancamento-item:hover {
+        transform: translateX(5px);
+      }
+      .lancamento-receita {
+        border-left-color: #28a745;
+        background-color: #f8fff9;
+      }
+      .lancamento-despesa {
+        border-left-color: #dc3545;
+        background-color: #fff8f8;
+      }
+      .loading {
+        text-align: center;
+        padding: 40px;
+      }
+      .erro-carregamento {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border: 1px solid #f5c6cb;
+      }
+      .saldo-positivo {
+        color: #28a745;
+        font-weight: bold;
+      }
+      .saldo-negativo {
+        color: #dc3545;
+        font-weight: bold;
+      }
+      .btn-custom {
+        border-radius: 25px;
+        padding: 10px 25px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+      .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      .no-data {
+        text-align: center;
+        color: #6c757d;
+        padding: 30px;
+        font-style: italic;
+      }
+      .valor-lancamento {
+        font-size: 1.3rem;
+        font-weight: bold;
+        text-align: right;
       }
     </style>
   </head>
@@ -56,22 +122,34 @@
     <img
       src="/images/logo.png"
       alt="Logo TFinance"
-      style="display: block; margin: 10px auto; width: 150px"
+      style="display: block; margin: 20px auto; width: 150px;"
     />
 
     <div class="container-menu">
       <!-- Top Bar -->
-      <div class="row mb-4" id="topBar"></div>
+      <div class="row mb-4 gx-0" id="topBar">
+        <div class="col-md-6 text-center loading">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="mt-3">Carregando seus dados...</p>
+        </div>
+      </div>
+      
       <!-- Saldo Geral -->
       <div
-        class="saldo-box bg-light p-3 rounded d-flex justify-content-between align-items-center"
+        class="saldo-box bg-light p-4 rounded d-flex justify-content-between align-items-center"
         id="saldoBox"
+        style="border: 2px solid #e9ecef;"
       ></div>
+      
       <!-- Últimos Lançamentos -->
       <div
-        class="lancamentos-box bg-light p-3 rounded"
+        class="lancamentos-box bg-light p-4 rounded"
         id="lancamentosBox"
+        style="border: 1px solid #e9ecef;"
       ></div>
+      
       <!-- Gráficos -->
       <div class="graficos-box row" id="graficosBox"></div>
     </div>
@@ -80,26 +158,93 @@
     <img
       src="/images/logo.png"
       alt="Logo TFinance"
-      style="display: block; margin: 15px auto; width: 150px"
+      style="display: block; margin: 20px auto; width: 150px;"
     />
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module">
-      import { apiRequest } from "/public/js/apiClient.js";
 
+      // Função para formatar data brasileira
+      function formatarData(dataString) {
+        try {
+          const data = new Date(dataString + 'T00:00:00');
+          return data.toLocaleDateString('pt-BR');
+        } catch (e) {
+          return dataString;
+        }
+      }
 
-       window.verLancamentos = async function() {
-        const token = localStorage.getItem("authToken");
+      // Função para formatar valor monetário
+      function formatarValor(valor) {
+        const num = parseFloat(valor);
+        if (isNaN(num)) return "0,00";
+        return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
 
-        const res = await fetch("/v1/lancamentos", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + token,
-          },
+      // Função para calcular dados numéricos localmente
+      function calcularDadosNumericos(lancamentos) {
+        let totalReceitas = 0;
+        let totalDespesas = 0;
+
+        lancamentos.forEach(l => {
+          const valor = parseFloat(l.valor) || 0;
+          if (l.tipo_lancamento === 0) { // Receita
+            totalReceitas += valor;
+          } else if (l.tipo_lancamento === 1) { // Despesa
+            totalDespesas += valor;
+          }
         });
 
+        const saldoGeral = totalReceitas - totalDespesas;
+        const total = totalReceitas + totalDespesas;
+        
+        const percentualReceitas = total > 0 ? (totalReceitas / total) * 100 : 0;
+        const percentualDespesas = total > 0 ? (totalDespesas / total) * 100 : 0;
+
+        return {
+          totalReceitas,
+          totalDespesas,
+          saldoGeral,
+          percentualReceitas,
+          percentualDespesas
+        };
       }
+
+      // Função para mostrar erro
+      function mostrarErro(mensagem) {
+        document.getElementById("topBar").innerHTML = `
+          <div class="col-12">
+            <div class="erro-carregamento">
+              <h5><strong>Erro:</strong></h5>
+              <p>${mensagem}</p>
+              <button class="btn btn-primary btn-custom mt-2" onclick="window.location.reload()">
+                Tentar Novamente
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // Função de logout
+      window.logout = async function() {
+        if (confirm('Tem certeza que deseja sair?')) {
+          try {
+            await fetch('/v1/logout', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+              }
+            });
+          } catch (error) {
+            console.log('Erro no logout:', error);
+          }
+
+          localStorage.removeItem('authToken');
+          alert('Logout realizado com sucesso!');
+          window.location.href = '/v1/login';
+        }
+      };
 
       window.addEventListener("load", async () => {
         const token = localStorage.getItem("authToken");
@@ -111,6 +256,8 @@
         }
 
         try {
+          console.log('Fazendo requisição para /v1/menu-data...');
+          
           const res = await fetch("/v1/menu-data", {
             method: "GET",
             headers: {
@@ -118,91 +265,193 @@
               Authorization: "Bearer " + token,
             },
           });
-          if (!res.ok) throw new Error("Erro: " + res.status);
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              alert("Sessão expirada. Faça login novamente.");
+              localStorage.removeItem('authToken');
+              window.location.href = "/v1/login";
+              return;
+            }
+            throw new Error(`Erro HTTP: ${res.status}`);
+          }
+          
           const data = await res.json();
+          console.log('Dados recebidos:', data);
+
+          // Verifica se os dados essenciais existem
+          if (!data.user) {
+            throw new Error("Dados do usuário não encontrados");
+          }
+
+          // Calcula os dados numéricos localmente para garantir precisão
+          const dadosCalculados = calcularDadosNumericos(data.lancamentos || []);
+          console.log('Dados calculados localmente:', dadosCalculados);
 
           // Atualiza a Top Bar
           document.getElementById("topBar").innerHTML = `
-          <div class="col-md-6 d-flex align-items-center bg-light rounded p-2">
-            <div class="user-circle">${data.user.nome
-              .charAt(0)
-              .toUpperCase()}</div>
-            <div>
-              <small>Seja Bem-vindo</small><br>
-              <strong>${data.user.nome}</strong>
+            <div class="col-md-6 d-flex align-items-center bg-light rounded p-3" style="border: 1px solid #dee2e6;">
+              <div class="user-circle">${data.user.nome
+                .charAt(0)
+                .toUpperCase()}</div>
+              <div>
+                <small class="text-muted">Seja Bem-vindo</small><br>
+                <strong style="font-size: 1.1rem;">${data.user.nome}</strong>
+              </div>
             </div>
-          </div>
-          <div class="col-md-6 text-end">
-            <a href="/v1/lancamentos"  class="btn btn-secondary">Realizar Lançamento</a>
-          </div>
-        `;
+            <div class="col-md-6 text-end d-flex justify-content-end align-items-center">
+              <a href="/v1/lancamentos" class="btn btn-success btn-custom me-3">
+                Realizar Lançamento
+              </a>
+              <button onclick="logout()" class="btn btn-outline-secondary btn-custom">
+                Sair
+              </button>
+            </div>
+          `;
 
-          // Atualiza o Saldo Geral
+          // Atualiza o Saldo Geral usando os dados calculados
+          const saldoGeral = dadosCalculados.saldoGeral;
+          const classeCorSaldo = saldoGeral >= 0 ? 'saldo-positivo' : 'saldo-negativo';
+
           document.getElementById("saldoBox").innerHTML = `
-          <span><strong>Saldo geral:</strong></span>
-          <span style="font-size: 1.8rem;">R$ ${parseFloat(
-            data.numericData.saldoGeral
-          ).toFixed(2)}</span>
-        `;
+            <div>
+              <span style="font-size: 1.2rem;"><strong>Saldo geral:</strong></span>
+            </div>
+            <div class="text-end">
+              <span style="font-size: 2rem;" class="${classeCorSaldo}">
+                R$ ${formatarValor(saldoGeral)}
+              </span>
+            </div>
+          `;
 
           // Atualiza os Últimos Lançamentos
-          let lancamentosHTML =
-            '<strong>Últimos Lançamentos</strong><div class="mt-2">';
-          data.lancamentos.slice(0, 2).forEach((l) => {
+          let lancamentosHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="mb-0"><strong>Últimos Lançamentos</strong></h5>
+              <small class="text-muted">Mostrando os 5 mais recentes</small>
+            </div>
+          `;
+
+          if (data.lancamentos && data.lancamentos.length > 0) {
+            data.lancamentos.slice(0, 5).forEach((l) => {
+              console.log('Processando lançamento:', l);
+              
+              // Determina tipo e cor
+              let tipo = "Indefinido";
+              let cor = "secondary";
+              let corTexto = "secondary";
+              let sinal = "";
+              let classeItem = "";
+              
+              if (l.tipo && typeof l.tipo === 'string') {
+                const tipoLower = l.tipo.toLowerCase();
+                if (tipoLower === 'receita') {
+                  tipo = "RECEITA";
+                  cor = "success";
+                  corTexto = "success";
+                  sinal = "+";
+                  classeItem = "lancamento-receita";
+                } else if (tipoLower === 'despesa') {
+                  tipo = "DESPESA";
+                  cor = "danger";
+                  corTexto = "danger";
+                  sinal = "-";
+                  classeItem = "lancamento-despesa";
+                }
+              }
+              
+              // Formatação do valor
+              const valor = formatarValor(l.valor);
+              const dataFormatada = formatarData(l.data);
+              
+              lancamentosHTML += `
+                <div class="lancamento-item ${classeItem}">
+                  <div class="row align-items-start">
+                    <div class="col-md-8">
+                      <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-${cor} me-2">${tipo}</span>
+                        ${l.categoria && l.categoria !== 'undefined' && l.categoria !== null ? 
+                          `<small class="text-muted badge bg-light text-dark">${l.categoria}</small>` : ""}
+                      </div>
+                      ${l.comentario && l.comentario !== 'undefined' && l.comentario !== null && l.comentario.trim() !== '' ? 
+                        `<small class="text-muted mb-2 d-block" style="font-style: italic;">"${l.comentario}"</small>` : ""}
+                      <small class="text-muted">${dataFormatada}</small>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="valor-lancamento text-${corTexto}">
+                        ${sinal}R$ ${valor}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            });
+          } else {
             lancamentosHTML += `
-            <div class="d-flex justify-content-between mb-2">
-              <div>
-                <span class="badge bg-${
-                  l.tipo === "Receita" ? "success" : "danger"
-                }">${l.tipo}</span>
+              <div class="no-data">
+                <p>Nenhum lançamento encontrado.</p>
+                <p>Comece criando seu primeiro lançamento!</p>
+                <a href="/v1/lancamentos" class="btn btn-primary btn-custom mt-2">
+                  Criar Lançamento
+                </a>
               </div>
-              <div>
-                ${l.tipo === "Receita" ? "+" : "-"} R$ ${parseFloat(
-              l.valor
-            ).toFixed(2)}
+            `;
+          }
+
+          document.getElementById("lancamentosBox").innerHTML = lancamentosHTML;
+
+          // Atualiza os Gráficos usando os dados calculados
+          const totalReceitas = dadosCalculados.totalReceitas;
+          const totalDespesas = dadosCalculados.totalDespesas;
+          const percentualReceitas = dadosCalculados.percentualReceitas;
+          const percentualDespesas = dadosCalculados.percentualDespesas;
+
+          document.getElementById("graficosBox").innerHTML = `
+            <div class="col-md-4 mb-3">
+              <div class="box h-100">
+                <h6 class="mb-3"><strong>Receitas</strong></h6>
+                <div style="font-size: 2rem; color: #28a745; margin-bottom: 15px;">
+                  <strong>${percentualReceitas.toFixed(1)}%</strong>
+                </div>
+                <div class="grafico-barra mt-2" style="width: ${Math.min(percentualReceitas, 100)}%; background-color: #28a745;"></div>
+                <small class="text-muted mt-2 d-block">Total: R$ ${formatarValor(totalReceitas)}</small>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="box h-100">
+                <h6 class="mb-3"><strong>Despesas</strong></h6>
+                <div style="font-size: 2rem; color: #dc3545; margin-bottom: 15px;">
+                  <strong>${percentualDespesas.toFixed(1)}%</strong>
+                </div>
+                <div class="grafico-barra mt-2 bg-danger" style="width: ${Math.min(percentualDespesas, 100)}%;"></div>
+                <small class="text-muted mt-2 d-block">Total: R$ ${formatarValor(totalDespesas)}</small>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="box h-100">
+                <h6 class="mb-3"><strong>Resumo Geral</strong></h6>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-success">Receitas:</span>
+                    <strong class="text-success">R$ ${formatarValor(totalReceitas)}</strong>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-danger">Despesas:</span>
+                    <strong class="text-danger">R$ ${formatarValor(totalDespesas)}</strong>
+                  </div>
+                  <hr>
+                  <div class="d-flex justify-content-between">
+                    <span class="${saldoGeral >= 0 ? 'text-success' : 'text-danger'}">Saldo:</span>
+                    <strong class="${saldoGeral >= 0 ? 'text-success' : 'text-danger'}">R$ ${formatarValor(saldoGeral)}</strong>
+                  </div>
+                </div>
               </div>
             </div>
           `;
-          });
-          lancamentosHTML += "</div>";
-          document.getElementById("lancamentosBox").innerHTML = lancamentosHTML;
 
-          // Atualiza os Gráficos
-          document.getElementById("graficosBox").innerHTML = `
-          <div class="col-md-4">
-            <div class="box">
-              <strong>${data.pizzaData.percentualReceitas}%</strong>
-              <div class="grafico-barra mt-2" style="width: ${
-                data.pizzaData.percentualReceitas
-              }%;"></div>
-              <small>Receitas</small>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="box">
-              <strong>${data.pizzaData.percentualDespesas}%</strong>
-              <div class="grafico-barra mt-2 bg-danger" style="width: ${
-                data.pizzaData.percentualDespesas
-              }%;"></div>
-              <small>Despesas</small>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="box">
-              <strong>Totais</strong><br>
-              Receitas: R$ ${parseFloat(data.numericData.totalReceitas).toFixed(
-                2
-              )}<br>
-              Despesas: R$ ${parseFloat(data.numericData.totalDespesas).toFixed(
-                2
-              )}
-            </div>
-          </div>
-        `;
         } catch (err) {
           console.error("Erro ao carregar dados do menu:", err);
-          alert("Erro ao carregar os dados. Faça login novamente.");
-          window.location.href = "/v1/login";
+          mostrarErro(`Falha ao carregar os dados: ${err.message}. Verifique sua conexão e tente novamente.`);
         }
       });
     </script>
