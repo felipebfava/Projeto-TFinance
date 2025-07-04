@@ -75,6 +75,10 @@ Link: https://www.figma.com/design/AZfMjl0URROaq0TKyIPFk7/Projeto-Integra-TFinan
 
 Link: https://miro.com/app/board/uXjVI7Uyeq4=/?share_link_id=65397044441
 
+Diagrama Entidade-Relacionamento (DER) do Banco de Dados:
+
+![image](https://github.com/user-attachments/assets/2b736f0d-cc03-4ec4-883f-18c0d42cb7d3)
+
 
 ## Documentação
 
